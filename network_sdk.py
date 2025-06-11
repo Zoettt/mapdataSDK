@@ -27,22 +27,22 @@ class NetworkQuery:
 
     def get_network_within_radius(self, center_point: Point, radius: float = 2000) -> Tuple[List[Node], List[Link]]:
         """
-        获取指定点周围指定半径范围内的路网数据
+        Get all nodes within radius
         
         Args:
-            center_point: 中心点坐标
-            radius: 查询半径（米），默认2000米
+            center_point: center point coordinates
+            radius: query radius (meters), default 2000 meters
             
         Returns:
-            Tuple[List[Node], List[Link]]: 返回范围内的节点和路段列表
+            Tuple[List[Node], List[Link]]: return list of nodes and links within the radius
         """
-        # 获取半径范围内的所有节点
+        # Get all nodes within radius
         nodes = self._get_nodes_within_radius(center_point, radius)
         
-        # 获取这些节点关联的所有路段
+        # Get all links related to these nodes
         links = self._get_connected_links(nodes)
         
-        # 获取这些路段关联的所有节点（可能包含半径外的节点）
+        # Get all nodes related to these links (may include nodes outside radius)
         all_related_nodes = set()
         for link in links:
             all_related_nodes.add(link.start_node)

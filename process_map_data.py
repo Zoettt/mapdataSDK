@@ -4,115 +4,102 @@ from typing import Dict, List, Tuple
 
 class MapDataProcessor:
     def __init__(self):
-        self.nodes: Dict[str, Dict] = {}  # 节点数据
-        self.links: Dict[str, Dict] = {}  # 路段数据
-        self.relations: Dict[str, Dict] = {}  # 关系数据
+        self.nodes: Dict[str, Dict] = {}  # Node data
+        self.links: Dict[str, Dict] = {}  # Link data
+        self.relations: Dict[str, Dict] = {}  # Relation data
         
-    def process_node(self, node_info: Dict) -> str:
-        """处理节点信息"""
-        node_id = node_info['id']
-        position = eval(node_info['position'])  # 解析坐标字符串
-        
-        self.nodes[node_id] = {
-            'id': node_id,
-            'x': position[0],  # 经度
-            'y': position[1],  # 纬度
-            'z': position[2],  # 高度
-            'raw_data': node_info  # 保存原始数据
+    def process_node(self, node_info: Dict):
+        position = eval(node_info['position'])  # Parse coordinate string
+        self.nodes[node_info['id']] = {
+            'x': position[0],  # Longitude
+            'y': position[1],  # Latitude
+            'z': position[2],  # Altitude
+            'raw_data': node_info  # Save raw data
         }
-        return node_id
         
-    def process_link(self, link_data: Dict) -> str:
-        """处理路段信息"""
-        link_id = link_data['link_id']
-        
-        # 处理几何形状
+    def process_link(self, link_data: Dict):
+        # Process geometry
         geometry = []
         for point in link_data['geometry']:
-            geometry.append((point['x'], point['y']))
+            geometry.append((point[0], point[1]))
             
-        # 计算路段长度
+        # Calculate link length
         length = 0
         for i in range(len(geometry) - 1):
             x1, y1 = geometry[i]
             x2, y2 = geometry[i + 1]
-            length += math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+            length += math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) * 111000  # Convert to meters
             
-        self.links[link_id] = {
-            'id': link_id,
-            'from_node': link_data['start_node_info']['id'],
-            'to_node': link_data['end_node_info']['id'],
-            'geometry': geometry,
+        self.links[link_data['id']] = {
+            'from_node': link_data['from_node'],
+            'to_node': link_data['to_node'],
             'length': length,
-            'lane_num_s2e': link_data['lane_num_s2e'],
-            'lane_num_e2s': link_data['lane_num_e2s'],
-            'speed_limit_s2e': link_data['speed_limit_s2e'],
-            'speed_limit_e2s': link_data['speed_limit_e2s'],
-            'traffic_light_s2e': link_data['traffic_light_s2e'],
-            'traffic_light_e2s': link_data['traffic_light_e2s'],
-            'junction': link_data['junction'],
-            'raw_data': link_data  # 保存原始数据
+            'lane_num_s2e': link_data.get('lane_num_s2e', 1),
+            'lane_num_e2s': link_data.get('lane_num_e2s', 1),
+            'speed_limit_s2e': link_data.get('speed_limit_s2e', 60),
+            'speed_limit_e2s': link_data.get('speed_limit_e2s', 60),
+            'traffic_light_s2e': link_data.get('traffic_light_s2e', False),
+            'traffic_light_e2s': link_data.get('traffic_light_e2s', False),
+            'junction': link_data.get('junction', False),
+            'geometry': geometry,
+            'raw_data': link_data  # Save raw data
         }
-        return link_id
         
-    def process_relation(self, link_data: Dict) -> str:
-        """处理关系信息"""
-        link_id = link_data['link_id']
-        node_id = link_data['end_node_info']['id']
-        
-        # 创建关系
-        relation_id = f"{link_id}:{node_id}"
-        self.relations[relation_id] = {
-            'id': relation_id,
-            'node_id': node_id,
-            'inlinks': [link_id],
-            'outlinks': link_data.get('out_link_ids', []),  # 使用get方法，如果不存在则返回空列表
-            'raw_data': {  # 保存原始数据
-                'link_id': link_id,
-                'node_id': node_id,
+    def process_relation(self, link_data: Dict):
+        # Create relation
+        self.relations[link_data['id']] = {
+            'node_id': link_data['node_id'],
+            'inlinks': link_data.get('in_link_ids', []),  # Use get method, return empty list if not exists
+            'outlinks': link_data.get('out_link_ids', []),  # Use get method, return empty list if not exists
+            'raw_data': {  # Save raw data
+                'node_id': link_data['node_id'],
+                'in_link_ids': link_data.get('in_link_ids', []),
                 'out_link_ids': link_data.get('out_link_ids', [])
             }
         }
-        return relation_id
         
     def save_to_file(self, filename: str):
-        """保存数据到文件"""
         with open(filename, 'w', encoding='utf-8') as f:
-            # 写入节点数据
-            f.write("# Nodes\n")
+            # Write node data
             for node_id, node_data in self.nodes.items():
-                raw_data = node_data['raw_data']
-                f.write(f"N {node_id} {node_data['x']} {node_data['y']} {node_data['z']} "
-                       f"raw_id={raw_data.get('id', '')} "
-                       f"raw_position={raw_data.get('position', '')}\n")
+                f.write(f"N {node_id} {node_data['x']} {node_data['y']} {node_data['z']}\n")
                 
-            # 写入路段数据
-            f.write("\n# Links\n")
+            # Write link data
             for link_id, link_data in self.links.items():
-                raw_data = link_data['raw_data']
                 geometry_str = ';'.join([f"{x},{y}" for x, y in link_data['geometry']])
                 f.write(f"L {link_id} {link_data['from_node']} {link_data['to_node']} "
                        f"{link_data['length']} {link_data['lane_num_s2e']} {link_data['lane_num_e2s']} "
                        f"{link_data['speed_limit_s2e']} {link_data['speed_limit_e2s']} "
                        f"{int(link_data['traffic_light_s2e'])} {int(link_data['traffic_light_e2s'])} "
-                       f"{int(link_data['junction'])} {geometry_str} "
-                       f"raw_id={raw_data.get('raw_id', '')} "
-                       f"dr_link_id_backward={raw_data.get('dr_link_id_backward', '')} "
-                       f"dr_link_id_forward={raw_data.get('dr_link_id_forward', '')} "
-                       f"master_id={raw_data.get('master_id', '')} "
-                       f"tp_id={raw_data.get('tp_id', '')} "
-                       f"usage={raw_data.get('usage', [])}\n")
+                       f"{int(link_data['junction'])} {geometry_str}\n")
                 
-            # 写入关系数据
-            f.write("\n# Relations\n")
+            # Write relation data
             for relation_id, relation_data in self.relations.items():
-                raw_data = relation_data['raw_data']
-                inlinks_str = ','.join(relation_data['inlinks'])
-                outlinks_str = ','.join(relation_data['outlinks'])
-                f.write(f"R {relation_id} {relation_data['node_id']} {inlinks_str} {outlinks_str} "
-                       f"raw_link_id={raw_data.get('link_id', '')} "
-                       f"raw_node_id={raw_data.get('node_id', '')} "
-                       f"raw_out_links={raw_data.get('out_link_ids', [])}\n")
+                f.write(f"R {relation_id} {relation_data['node_id']} "
+                       f"{','.join(relation_data['inlinks'])} {','.join(relation_data['outlinks'])}\n")
+                
+def process_json_file(input_file: str, output_file: str):
+    # Read JSON file
+    with open(input_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        
+    # Process data
+    processor = MapDataProcessor()
+    
+    # Process nodes
+    for node in data.get('nodes', []):
+        processor.process_node(node)
+        
+    # Process links
+    for link in data.get('links', []):
+        processor.process_link(link)
+        
+    # Process relations
+    for relation in data.get('relations', []):
+        processor.process_relation(relation)
+        
+    # Save data
+    processor.save_to_file(output_file)
 
 def main():
     # 读取JSON文件

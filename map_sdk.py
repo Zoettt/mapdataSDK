@@ -32,30 +32,30 @@ class MapData:
 
     def add_update_callback(self, callback):
         """
-        添加数据更新回调函数
+        Add data update callback function
         Args:
-            callback: 当数据更新时会被调用的函数
+            callback: Function to be called when data is updated
         """
         self._update_callbacks.append(callback)
 
     def _notify_update(self, update_type: str, data_id: int):
         """
-        通知数据更新
+        Notify data update
         Args:
-            update_type: 更新类型 ('node', 'link', 'relation')
-            data_id: 更新的数据ID
+            update_type: Update type ('node', 'link', 'relation')
+            data_id: Updated data ID
         """
         for callback in self._update_callbacks:
             callback(update_type, data_id)
 
     def update_node(self, node_id: int, new_point: Tuple[float, float]) -> bool:
         """
-        更新节点位置
+        Update node location
         Args:
-            node_id: 节点ID
-            new_point: 新的位置
+            node_id: Node ID
+            new_point: New location
         Returns:
-            bool: 更新是否成功
+            bool: Whether the update was successful
         """
         if node_id not in self.nodes:
             return False
@@ -67,13 +67,13 @@ class MapData:
 
     def update_link(self, link_id: int, new_start_node: int = None, new_end_node: int = None) -> bool:
         """
-        更新路段连接关系
+        Update road connection relationship
         Args:
-            link_id: 路段ID
-            new_start_node: 新的起点节点
-            new_end_node: 新的终点节点
+            link_id: Road section ID
+            new_start_node: New starting node
+            new_end_node: New ending node
         Returns:
-            bool: 更新是否成功
+            bool: Whether the update was successful
         """
         if link_id not in self.links:
             return False
@@ -90,14 +90,14 @@ class MapData:
     def update_relation(self, relation_id: int, new_inlink: int = None, 
                        new_node: int = None, new_outlink: int = None) -> bool:
         """
-        更新关系
+        Update relationship
         Args:
-            relation_id: 关系ID
-            new_inlink: 新的入路段
-            new_node: 新的节点
-            new_outlink: 新的出路段
+            relation_id: Relationship ID
+            new_inlink: New incoming road
+            new_node: New node
+            new_outlink: New outgoing road
         Returns:
-            bool: 更新是否成功
+            bool: Whether the update was successful
         """
         if relation_id not in self.relations:
             return False
@@ -115,9 +115,9 @@ class MapData:
 
     def batch_update(self, updates: List[tuple]):
         """
-        批量更新数据
+        Batch update data
         Args:
-            updates: 更新列表，每个元素为 (update_type, data_id, new_data) 的元组
+            updates: Update list, each element is a tuple of (update_type, data_id, new_data)
         """
         for update_type, data_id, new_data in updates:
             if update_type == 'node':
@@ -199,12 +199,12 @@ class MapData:
         nodes = []
         links = []
         
-        # 获取矩形内的节点
+        # Get nodes within rectangle
         for node in self.nodes.values():
             if min_x <= node.x <= max_x and min_y <= node.y <= max_y:
                 nodes.append(node)
                 
-        # 获取与这些节点相关的路段
+        # Get links related to these nodes
         node_ids = {node.id for node in nodes}
         for link in self.links.values():
             if link.from_node in node_ids or link.to_node in node_ids:
