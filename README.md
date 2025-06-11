@@ -73,38 +73,21 @@ python example.py
 - typing-extensions >= 4.0.0
 - dataclasses (for Python < 3.7)
 
+## Test Data
+
+The SDK includes a sample map data file (`mapdata.txt`) that contains:
+- Real road network data from Shanghai area
+- Approximately 100,000 nodes and 200,000 links
+- Data format: Custom text format with the following structure:
+  ```
+  N <node_id> <x> <y> <z> [tags]
+  L <link_id> <from_node> <to_node> <length> <lane_num_s2e> <lane_num_e2s> <speed_limit_s2e> <speed_limit_e2s> <traffic_light_s2e> <traffic_light_e2s> <junction> <geometry> [tags]
+  R <relation_id> <node_id> <inlinks> <outlinks> [tags]
+  ```
+
 ## Usage Examples
 
-### Basic Usage
-
-```python
-from map_sdk import MapData, Node, Link, Relation
-
-# Create map data instance
-map_data = MapData()
-
-# Add nodes
-node1 = Node(id=1, x=0.0, y=0.0, tags={"type": "intersection"})
-node2 = Node(id=2, x=100.0, y=0.0, tags={"type": "intersection"})
-map_data.add_node(node1)
-map_data.add_node(node2)
-
-# Add links
-link1 = Link(id=1, from_node=1, to_node=2, tags={"type": "road"})
-map_data.add_link(link1)
-
-# Add relations
-relation1 = Relation(id=1, node_id=2, inlinks=[1], outlinks=[])
-map_data.add_relation(relation1)
-
-# Find nearest node
-nearest = map_data.find_nearest_node(50.0, 10.0)
-
-# Get elements in rectangle
-nodes, links = map_data.get_elements_in_rectangle(0.0, 0.0, 150.0, 150.0)
-```
-
-### Loading Map Data from File
+### 1. Loading and Basic Data Access
 
 ```python
 from map_sdk import MapDataLoader
@@ -116,21 +99,61 @@ map_data = MapDataLoader.load_from_file('mapdata.txt')
 nodes = map_data.get_all_nodes()
 links = map_data.get_all_links()
 relations = map_data.get_all_relations()
+
+print(f"Loaded {len(nodes)} nodes, {len(links)} links, and {len(relations)} relations")
 ```
 
-### Vehicle Trajectory Simulation
+### 2. Point-based Query (Find Nearest Node)
+
+```python
+# Find the nearest node to a given point
+test_point = (121.4670874, 31.23096049)  # A point in Shanghai
+nearest_node = map_data.find_nearest_node(test_point[0], test_point[1])
+print(f"Nearest node: {nearest_node.id} at ({nearest_node.x}, {nearest_node.y})")
+```
+
+### 3. Radius-based Query
+
+```python
+from example import find_elements_within_radius
+
+# Find all elements within 100 meters of a point
+test_point = (121.4670874, 31.23096049)
+nodes, links, relations = find_elements_within_radius(map_data, test_point[0], test_point[1], 100)
+
+print(f"Found {len(nodes)} nodes, {len(links)} links, and {len(relations)} relations within 100m")
+```
+
+### 4. Rectangle-based Query
+
+```python
+# Find all elements within a rectangle
+rect_min_x = 121.4670874 - 0.001
+rect_min_y = 31.23096049 - 0.001
+rect_max_x = 121.4670874 + 0.001
+rect_max_y = 31.23096049 + 0.001
+
+nodes, links = map_data.get_elements_in_rectangle(rect_min_x, rect_min_y, rect_max_x, rect_max_y)
+print(f"Found {len(nodes)} nodes and {len(links)} links in the rectangle")
+```
+
+### 5. Vehicle Trajectory Simulation
 
 ```python
 from example import simulate_vehicle_trajectory, find_elements_within_radius
 
-# Simulate vehicle trajectory
+# Simulate a vehicle trajectory
 start_point = (121.4670874, 31.23096049)
 trajectory = simulate_vehicle_trajectory(start_point[0], start_point[1], duration=60)
 
 # Find elements around each trajectory point
-for x, y in trajectory:
+for i, (x, y) in enumerate(trajectory):
+    print(f"\nTime point {i+1} ({i*10} seconds):")
+    print(f"Vehicle position: ({x}, {y})")
+    
+    # Find elements within 2km
     nodes, links, relations = find_elements_within_radius(map_data, x, y, 2000)
-    # Process the found elements...
+    print(f"Found {len(nodes)} nodes, {len(links)} links, and {len(relations)} relations within 2km")
 ```
 
 ---
@@ -210,38 +233,21 @@ python example.py
 - typing-extensions >= 4.0.0
 - dataclasses (Python < 3.7 需要)
 
+## 测试数据
+
+SDK包含一个示例地图数据文件（`mapdata.txt`），其中包含：
+- 某地区的实际路网数据
+- 约10万个节点和20万个路段
+- 数据格式：自定义文本格式，结构如下：
+  ```
+  N <节点ID> <x坐标> <y坐标> <z坐标> [标签]
+  L <路段ID> <起始节点> <终止节点> <长度> <正向车道数> <反向车道数> <正向限速> <反向限速> <正向信号灯> <反向信号灯> <路口> <几何形状> [标签]
+  R <关系ID> <节点ID> <入路段> <出路段> [标签]
+  ```
+
 ## 使用示例
 
-### 基本使用
-
-```python
-from map_sdk import MapData, Node, Link, Relation
-
-# 创建地图数据实例
-map_data = MapData()
-
-# 添加节点
-node1 = Node(id=1, x=0.0, y=0.0, tags={"type": "intersection"})
-node2 = Node(id=2, x=100.0, y=0.0, tags={"type": "intersection"})
-map_data.add_node(node1)
-map_data.add_node(node2)
-
-# 添加路段
-link1 = Link(id=1, from_node=1, to_node=2, tags={"type": "road"})
-map_data.add_link(link1)
-
-# 添加关系
-relation1 = Relation(id=1, node_id=2, inlinks=[1], outlinks=[])
-map_data.add_relation(relation1)
-
-# 查找最近节点
-nearest = map_data.find_nearest_node(50.0, 10.0)
-
-# 获取矩形范围内的要素
-nodes, links = map_data.get_elements_in_rectangle(0.0, 0.0, 150.0, 150.0)
-```
-
-### 从文件加载地图数据
+### 1. 数据加载和基本访问
 
 ```python
 from map_sdk import MapDataLoader
@@ -253,9 +259,45 @@ map_data = MapDataLoader.load_from_file('mapdata.txt')
 nodes = map_data.get_all_nodes()
 links = map_data.get_all_links()
 relations = map_data.get_all_relations()
+
+print(f"加载了 {len(nodes)} 个节点，{len(links)} 个路段，{len(relations)} 个关系")
 ```
 
-### 车辆轨迹模拟
+### 2. 点查询（查找最近节点）
+
+```python
+# 查找给定点最近的节点
+test_point = (121.4670874, 31.23096049)  # 上海的一个点
+nearest_node = map_data.find_nearest_node(test_point[0], test_point[1])
+print(f"最近的节点: {nearest_node.id} 位于 ({nearest_node.x}, {nearest_node.y})")
+```
+
+### 3. 半径查询
+
+```python
+from example import find_elements_within_radius
+
+# 查找点周围100米范围内的所有要素
+test_point = (121.4670874, 31.23096049)
+nodes, links, relations = find_elements_within_radius(map_data, test_point[0], test_point[1], 100)
+
+print(f"100米范围内找到 {len(nodes)} 个节点，{len(links)} 个路段，{len(relations)} 个关系")
+```
+
+### 4. 矩形查询
+
+```python
+# 查找矩形范围内的所有要素
+rect_min_x = 121.4670874 - 0.001
+rect_min_y = 31.23096049 - 0.001
+rect_max_x = 121.4670874 + 0.001
+rect_max_y = 31.23096049 + 0.001
+
+nodes, links = map_data.get_elements_in_rectangle(rect_min_x, rect_min_y, rect_max_x, rect_max_y)
+print(f"矩形范围内找到 {len(nodes)} 个节点和 {len(links)} 个路段")
+```
+
+### 5. 根据车辆实时位置拉取数据
 
 ```python
 from example import simulate_vehicle_trajectory, find_elements_within_radius
@@ -265,7 +307,11 @@ start_point = (121.4670874, 31.23096049)
 trajectory = simulate_vehicle_trajectory(start_point[0], start_point[1], duration=60)
 
 # 查找每个轨迹点周围的要素
-for x, y in trajectory:
+for i, (x, y) in enumerate(trajectory):
+    print(f"\n时间点 {i+1}（{i*10}秒）:")
+    print(f"车辆位置: ({x}, {y})")
+    
+    # 查找2公里范围内的要素
     nodes, links, relations = find_elements_within_radius(map_data, x, y, 2000)
-    # 处理找到的要素...
+    print(f"2公里范围内找到 {len(nodes)} 个节点，{len(links)} 个路段，{len(relations)} 个关系")
 ``` 
